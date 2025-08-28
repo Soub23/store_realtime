@@ -1,35 +1,27 @@
-import { MongoClient } from "mongodb";
-import WebSocket, { WebSocketServer } from "ws";
+import clientPromise from "@/lib/mongodb";
 
-const client = new MongoClient(process.env.MONGO_URI);
-
-async function start() {
-  await client.connect();
-  const db = client.db("store_db"); // your DB name
+export default async function handler(req, res) {
+  const client = await clientPromise;
+  const db = client.db("sample_db");
   const orders = db.collection("orders");
 
-  // WebSocket server
-  const wss = new WebSocketServer({ port: process.env.PORT || 4000 });
-  console.log("✅ WebSocket server running");
-
-  // Watch MongoDB changes
-  const changeStream = orders.watch();
-
-  changeStream.on("change", (change) => {
-    console.log("📢 Order change:", change);
-
-    // Broadcast to all connected clients
-    wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(change));
-      }
+  if (req.method === "POST") {
+    const { itemName, quantity } = req.body;
+    const result = await orders.insertOne({
+      itemName,
+      quantity,
+      status: "pending",
+      createdAt: new Date(),
     });
-  });
-
-  wss.on("connection", (ws) => {
-    console.log("🟢 Flutter connected");
-    ws.send(JSON.stringify({ message: "Connected to orders feed" }));
-  });
+    res.json(result);
+  } else if (req.method === "GET") {
+    const data = await orders.find({}).toArray();
+    res.json(data);
+  } else {
+    res.status(405).end(); // Method Not Allowed
+  }
 }
 
-start().catch(console.error);
+export async function GET(req) {
+    return Response.json({ message: "Hello from Route 1 and render service" });
+}
