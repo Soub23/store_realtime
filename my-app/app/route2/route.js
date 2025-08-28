@@ -38,6 +38,6 @@ export async function GET() {
       { status: 500 }
     );
   } finally {
-    await client.close();
+    return Response.json({ message: "Hello from Route 1 and render service" });
   }
 }
